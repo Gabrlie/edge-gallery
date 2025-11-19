@@ -28,17 +28,20 @@ export async function GET(
   const files = data.files;
   const randomFile = files[Math.floor(Math.random() * files.length)];
   
-  // 获取当前域名协议
-  const url = new URL(request.url);
-  const imageUrl = `${url.origin}/${data.folder}/${randomFile}`;
+  // 使用相对路径，不包含域名
+  const imagePath = `/${data.folder}/${randomFile}`;
 
   try {
+    // 获取请求的 origin，确保使用正确的域名
+    const url = new URL(request.url);
+    const imageUrl = new URL(imagePath, url.origin).href;
+    
     // 内部 Fetch 获取图片流
     const response = await fetch(imageUrl);
     if (!response.ok) throw new Error('Fetch failed');
     
     const buffer = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const contentType = response.headers.get('content-type') || 'image/webp';
 
     return new NextResponse(buffer, {
       headers: {
@@ -48,6 +51,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    return NextResponse.redirect(imageUrl);
+    // 重定向到相对路径，而不是绝对 URL
+    return NextResponse.redirect(new URL(imagePath, request.url));
   }
 }
